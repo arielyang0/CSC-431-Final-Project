@@ -371,31 +371,370 @@ if (a<=0)
 	return (x);
 }
 
+class Function {
+public:
+  virtual double f(double x)=0;
+  
+  double Df(double x, double h=0.00001) {
+    return (f(x+h)-f(x-h))/(2.0*h);
+  }
 
+  double DDf(double x, double h=1e-5) {
+    return (f(x+h)-2.0*f(x)+f(x-h))/(h*h);
+  }
+
+  double condition_number(double x){
+    return Df(x)*x/f(x);
+  }
+  
+  double solve_newton(double x_guess, double ap=1e-5, double rp=1e-4, int ns=100) {
+    double x_old, x = x_guess;
+    for(int k=0; k<ns; k++) {
+      x_old = x;
+      x = x - f(x)/Df(x);
+      if(abs(x-x_old)<max(ap,rp*abs(x))) return x;
+    }
+    throw string("no convergence");
+  }  
+
+  double solve_bisection(double a, double b, double ap=1e-6, double rp=1e-4, int ns=11){
+	  double fa=f(a);
+	  double fb=f(b); 
+	  if (fa==0) 
+		  return a;
+	  if (fb==0) 
+		  return b;
+	  if (fa*fb>0) 
+		  throw string ("fa and fb should have opposite signs");
+	  for(int k=0;k<ns;k++){
+		  double x=(a+b)/2;
+		  double fx=f(x);
+		  if (fx==0 || abs(b-a)<max(ap,abs(x)*rp))
+			  return x;
+		  else if (fx*fa<0)
+		  {
+			  b=x;
+			  fa=fx; 
+		  }
+		  else {
+			a =x;
+		    fa=fx;	  
+		  }
+	  }
+	  throw string ("no convergence");
+  }
+double solve_secant(double x, double ap=1e-6, double rp=1e-4, int ns=20){
+		double fx=f(x);
+		double dfx=Df(x);
+		for(int k=0; k<ns;k++){
+			if (abs(dfx) < ap) 
+				throw string ("unstable solution");
+			double x_old=x;
+			double fx_old=fx;
+			x=x-fx/dfx;
+			if (k>2 && abs(x-x_old)<max(ap,abs(x)*rp)) 
+				return x;
+			fx=f(x);
+			dfx=(fx-fx_old)/(x-x_old);
+		} 
+		throw string ("no convergence");
+	}
+
+double solve_newton_stabilized(double a, double b, double ap=1e-6, double rp=1e-4, int ns=20){
+	  double fa=f(a);
+	  double fb=f(b); 
+	  if (fa==0) 
+		  return a;
+	  if (fb==0) 
+		  return b;
+	  if (fa*fb>0) 
+		  throw string("no convergence");
+	  double x=(a+b)/2;
+	  double fx=f(x);
+	  double dfx=Df(x);
+	  for(int k=0;k<ns; k++){
+		  double x_old=x;
+		  double fx_old=fx;
+		  if (abs(dfx)>ap)
+			  x=x-fx/dfx;
+		  if (x==x_old || x<a|| x>b)
+			  x=(a+b)/2;
+		  fx=f(x);
+		  if(x==x_old || abs(x-x_old) <max(ap,abs(x)*rp)) return x;
+		  dfx=(fx-fx_old)/(x-x_old);
+		  if (fx*fa<0){ 
+			  b=x;
+			  fb=fx;
+		  }
+		  else {
+			  a=x;
+			  fa=fx;
+		  }
+	  throw string("no convergence");
+	  }
+}
+
+double g(double x){return (f(x) +x);}
+double solve_fixed_point(double x, double ap=1e-6, double rp=1e-4, int ns=100){
+		double h = 0.00001;
+		double dg=(g(x+h)-g(x-h))/(2.0*h);
+		for(int k=0; k<ns;k++){
+			if (abs(dg)>=1) 
+				throw string("error Dg(x) >=1"); 
+			double x_old= x;
+			x=g(x); 
+			if (k>2 && abs(x_old-x)<(max(ap,abs(x)*rp)))
+				return x;
+		}
+		throw string("no convergence");
+}
+
+double optimize_newton(double x_guess, double ap=1e-5, 
+			double rp=1e-4, int ns=20) {
+    double x_old, x = x_guess;
+    for(int k=0; k<ns; k++) {
+      x_old = x;
+      x = x - Df(x)/DDf(x);
+      if(abs(x-x_old)<max(ap,rp*abs(x))) return x;
+    }
+    throw string("no convergence");
+  }  
+
+ double optimize_bisection(double a,double b,double ap=1e-6,double rp=1e-4,int ns=100)
+ {
+	 double Dfa = Df(a);
+	 double Dfb = Df(b);
+	 if (Dfa == 0)
+		 return a;
+	 if (Dfb == 0)
+		 return b;
+	 if (Dfa*Dfb > 0)
+		 throw string ("Dfa and Dfb must have opposite signs");
+	 for (int k=0; k<ns;k++)
+	 {
+		 double x =(a+b)/2;
+		 double Dfx = Df(x);
+		 if (Dfx == 0 || abs(b-a) < max(ap,abs(x))*rp)
+			 return x;
+		 else if (Dfx * Dfa < 0)
+		 {
+			 b = x;
+			 Dfb = Dfx;
+		 }
+		 else
+		 {
+			 a = x;
+			 Dfa = Dfx;
+		 }
+	 }
+	 throw string ("no convergence");
+ }
+
+ double optimize_secant (double x, double ap=1e-6,double rp=1e-4,int ns=100)
+ {
+	 double fx = f(x);
+	 double Dfx = Df(x);
+	 double DDfx = DDf(x);
+	 for (int k=0;k<ns;k++)
+	 {
+		 if (Dfx==0)
+			 return x;
+		 if (abs(DDfx)<ap)
+			 throw string ("unstable solution");
+		 double x_old = x;
+		 double Dfx_old = Dfx;
+		 x = x - Dfx / DDfx;
+		 if (abs(x-x_old)<max(ap, abs(x)*rp))
+			 return x;
+		 fx = f(x);
+		 Dfx = Df(x);
+		 DDfx = (Dfx - Dfx_old)/(x - x_old);
+	 }
+	 throw string ("no convergence");
+ }
+
+ double optimize_newton_stabilized(double a,double b,double ap=1e-6,double rp=1e-4,int ns=20)
+ {
+	 double Dfa = Df(a);
+	 double Dfb = Df(b);
+	 if (Dfa ==0)
+		 return a;
+	 if (Dfb == 0)
+		 return b;
+	 if (Dfa*Dfb>0)
+		 throw string ("Dfa and Dfb must have opposite signs");
+	 double x = (a+b)/2;
+	 double fx = f(x);
+	 double Dfx = Df(x);
+	 double DDfx = DDf(x);
+	 for (int k=0;k<ns;k++)
+	 {
+		 if (Dfx == 0)
+			 return x;
+		 double x_old = x;
+		 double fx_old = fx;
+		 double Dfx_old = Dfx;
+		 if (abs(DDfx)>ap)
+			 x = x - Dfx/DDfx;
+		 if (x==x_old || x<a || x>b)
+			 x = (a+b)/2;
+		 if (abs(x-x_old)<max(ap,abs(x)*rp))
+			 return x;
+		 fx = f(x);
+		 Dfx = (fx-fx_old)/(x-x_old);
+		 DDfx = (Dfx-Dfx_old)/(x-x_old);
+		 if (Dfx*Dfa<0)
+		 {
+			 b = x;
+			 Dfb = Dfx;
+		 }
+		 else
+		 {
+			 a = x;
+			 Dfa = Dfx;
+		 }
+	 }
+	 throw string ("no convergence");
+ }
+
+ double optimize_golden_search(double a,double b,double ap=1e-6,double rp=1e-4,int ns=100)
+ {
+	 double tau = (sqrt(5.0)-1.0)/2.0;
+	 double x1 = a+(1.0-tau)*(b-a);
+	 double x2 = a+tau*(b-a);
+	 double fa = f(a);
+	 double f1 = f(x1);
+	 double f2 = f(x2);
+	 double fb = f(b);
+	 for (int k=0;k<100;k++)
+	 {
+		 if (f1>f2)
+		 {
+			 a = x1;
+			 fa = f1;
+			 x1 = x2;
+			 f1 = f2;
+			 x2 = a+tau*(b-a);
+			 f2 = f(x2);
+		 }
+		 else 
+		 {
+			 b = x2;
+			 fb = f2;
+			 x2 = x1;
+			 f2 = f1;
+			 x1 = a+(1.0-tau)*(b-a);
+			 f1 = f(x1);
+		 }
+		 if (k>2 && abs(b-a)<max(ap,abs(b)*rp))
+			 return b;
+	 }
+	 throw string ("no convergence");
+ }
+};
+
+
+class MyFunction : public Function {
+  double f(double x) { return (x-2)*(x+8); }
+};
+
+class MyOtherFunction : public Function {
+  double f(double x) { return (x-1)*(x+3); }
+};
+
+class SimpleTransaction {
+public:
+  double A, t;
+  SimpleTransaction(double A, double t) {
+    this->A = A;
+    this->t = t;
+  }
+  double present_value(float r) {
+    return A*exp(-r*t);
+  }
+};
+
+class ComplexTransaction {
+public:
+  vector<SimpleTransaction> transactions;
+  double present_value(float r) {
+    double total = 0;
+    for(int k=0; k<transactions.size(); k++) {
+      total += transactions[k].present_value(r);
+    }
+    return total;
+  }
+};
+
+class MyBondFunction : public Function {
+public:
+  double A, t, p;
+  int n;
+  double f(double r) {
+    ComplexTransaction bond;
+    for(int i=1; i<=n; i++)
+      bond.transactions.push_back(SimpleTransaction(A,t*i));
+    return bond.present_value(r)-p;
+  }
+};
+
+class Portfolio2 : public Function {
+public:
+  double r1, r2, sigma1, sigma2, rho, r_free;
+  double R(double x) {
+    return x*r1+(1.0-x)*r2;
+  }
+  double sigma(double x) {
+    return sqrt(x*x*sigma1*sigma1+2.0*x*(1.0-x)*sigma1*sigma2*rho+(1.0-x)*(1.0-x)*sigma2*sigma2);
+  }
+  double sharpe(double x) {
+    return (R(x)-r_free)/sigma(x);
+  }
+  double f(double x) {
+    return sharpe(x);
+  }
+};
 
 int main() {
   Matrix A = input();
   cout<<A;
-  //cout<<is_almost_symmetric(A)<<endl;
-  //cout<<is_almost_zero(A)<<endl;
+  cout<<is_almost_symmetric(A)<<endl;
+  cout<<is_almost_zero(A)<<endl;
   cout<<condition_number(A)<<endl;
-  //cout<<exp_m(A)<<endl;
-  //cout<<norm(A)<<endl;
-  //A.setitem(1,0,10);
-  // cout << A;
-	//Matrix C;
-	//cout<<C.identity(4,2,1);
-	//cout<<A;
-	//cout<<row(C.identity(4,2,1),2);
-	//cout<<col(C.identity(4,2,1),1);
- // Matrix B(A.rows,A.cols);
-  //B = inv(A);
-  //cout << B*A << endl;
-  //cout << transpose(C) << endl;
-  //cout << A/3 <<endl;
-  //cout << A/A;
- //Matrix C(3,3);
- // cout<< C.identity(3,1,0);
+  cout<<exp_m(A)<<endl;
+  cout<<norm(A)<<endl;
+  A.setitem(1,0,10);
+  cout << A;
+  Matrix C;
+  cout<<C.identity(4,2,1);
+  cout<<A;
+  cout<<row(C.identity(4,2,1),2);
+  cout<<col(C.identity(4,2,1),1);
+  Matrix B(A.rows,A.cols);
+  B = inv(A);
+  cout << B*A << endl;
+  cout << transpose(C) << endl;
+  cout << A/3 <<endl;
+  cout << A/A;
+  Matrix C(3,3);
+  cout<< C.identity(3,1,0);
+  
+  
+  MyFunction a;
+
+  cout << a.condition_number(0.0)<<endl;
+
+  cout << a.optimize_newton(-2.0) << endl;
+  cout << a.optimize_bisection(-2.5,-3.5) << endl;
+  cout << a.optimize_secant(-2.0) << endl;
+  cout << a.optimize_newton_stabilized(-2.5,-3.5) << endl;
+  cout << a.optimize_golden_search(-2.5,-3.5) << endl;
+  
+  cout << a.solve_newton(10)<< endl;
+  cout << a.solve_bisection(1.5, 2.5)<< endl; 
+  cout << a.solve_newton_stabilized(1.5,2.5)<< endl;
+  cout << a.solve_secant(1.5) << endl;
+  /*cout << a.solve_fixed_point(1.5)<<endl;*/
   system("pause");
   return 0;
 }
