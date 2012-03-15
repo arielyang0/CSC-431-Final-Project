@@ -291,6 +291,85 @@ float norm(Matrix A, int p=1){
 	}
 	cout<<"no convergence";
 }
+ Matrix Cholesky(Matrix A)
+{
+	 double p;
+	 Matrix L;
+	 if(is_almost_symmetric(A)){
+			Matrix L=A;
+			for(int k=0; k<L.cols; k++){
+				if (L(k,k)<=0)
+					cout<<"Arithmetic Error/";
+					p=sqrt(L(k,k));
+					L(k,k)=sqrt(L(k,k));
+					for(int i=k+1; i<L.rows; i++)
+						L(i,k)=L(i,k)/p;
+					for(int j=k+1; j<L.rows; j++){
+						p=float(L(j,k));
+						for(int i=k+1; i<L.rows; i++)
+							L(i,j)=L(i,j)-(p*L(i,k));}}
+			for(int i=0; i<L.rows; i++){
+				for(int j=i+1; j<L.cols; j++)
+					L(i,j)=0;}
+				return L;
+						
+			
+	 }
+	 else
+		 cout<<"Arithmetic Error/";
+}
+
+
+
+bool is_positive_definite(Matrix A)
+{
+	try{
+		 (Cholesky(A));
+		 cout<<"Is positive definite"<<endl;
+	}
+	catch( ...){
+		 cout<<"Is not positive definite"<<endl;
+	}
+	return 0;
+}
+
+
+Matrix Markowitz(Matrix mu, Matrix cov, float rfree)
+{
+	Matrix X(cov.rows,1);
+	Matrix R(1,mu.cols);
+	for(int i=0; i<mu.cols; i++){
+		R(0,i)=0.05;}
+	X=(mu-R)*(1/cov);
+	double sum=0;
+	for(int i=0; i<X.cols; i++)
+		for(int j=0; j<X.rows; j++){
+			sum=sum+X(j,i);}
+	X=(1/sum)*X;
+	Matrix Return(1,1);
+	Matrix Risk(1,1);
+	Matrix Y(X.cols, X.rows);
+	for(int i=0; i<X.cols; i++){
+		for(int j=0; j<X.rows; j++)
+			Y(i,j)=X(j,i);}
+	cout<<"Portfolio "<<X<<endl;
+	Return = mu*Y;
+	Risk = X*cov;
+	Risk = Risk*Y;
+	double Portfolio_Risk=sqrt(Risk(0,0));
+	cout<< "Return " <<Return<<"  Risk "<<Portfolio_Risk<<endl;
+	return X;
+}
+
+
+double sqroot(double a)
+{
+double x;
+if (a<=0)
+	cout << "BAD\n";
+	x=sqrt(a);
+	return (x);
+}
 
 
 
